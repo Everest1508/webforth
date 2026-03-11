@@ -40,10 +40,16 @@ export async function updateDraft(id: string, name: string, content: SiteContent
 export async function getDraft(id: string) {
   const [row] = await db.select().from(drafts).where(eq(drafts.id, id)).limit(1);
   if (!row) return null;
-  return {
-    ...row,
-    content: row.content as unknown as SiteContent,
+  const raw = row.content as unknown;
+  const r = raw as SiteContent | null | undefined;
+  const content: SiteContent = {
+    pages: Array.isArray(r?.pages) ? r.pages : [],
+    global:
+      r?.global && typeof r.global === "object"
+        ? { ...r.global, siteName: r.global.siteName ?? "Site", navigation: Array.isArray(r.global.navigation) ? r.global.navigation : [] }
+        : { siteName: "Site", navigation: [] },
   };
+  return { ...row, content };
 }
 
 export async function listDrafts() {

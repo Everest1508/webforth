@@ -11,7 +11,8 @@ export default async function SlugPage({ params }: Props) {
     notFound();
   }
   const content = getContent();
-  const page = content.pages.find((p) => p.slug === slug);
+  const pages = content?.pages ?? [];
+  const page = pages.find((p) => p.slug === slug);
   if (!page) notFound();
   const blocks = Array.isArray(page.blocks) ? page.blocks : [];
   return (

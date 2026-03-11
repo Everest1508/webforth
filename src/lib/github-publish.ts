@@ -244,14 +244,18 @@ export async function publishToGitHub(
     }
   }
 
-  const previewUrl =
-    process.env.VERCEL_URL && process.env.VERCEL_ENV !== "production"
-      ? `https://${process.env.VERCEL_PROJECT_ID}-git-${branchName.replace(/\//g, "-")}-${process.env.VERCEL_TEAM_ID?.slice(0, 6) ?? "preview"}.vercel.app`
-      : `https://${branchName.replace(/\//g, "-")}.vercel.app`;
-
-  const vercelPreviewUrl = process.env.VERCEL_PROJECT_ID
-    ? `https://${branchName.replace(/\//g, "-")}-${process.env.VERCEL_PROJECT_ID}.vercel.app`
-    : previewUrl;
+  // Build preview URL: on Vercel preview, use same project/scope and swap branch (format: project-git-branch-scope.vercel.app)
+  const branchSlug = branchName.replace(/\//g, "-");
+  let vercelPreviewUrl: string;
+  const vercelUrl = process.env.VERCEL_URL;
+  const currentRef = process.env.VERCEL_GIT_COMMIT_REF?.replace(/\//g, "-") ?? "main";
+  if (vercelUrl && currentRef) {
+    const host = vercelUrl.replace(/^https?:\/\//, "");
+    const withBranch = host.replace(`-git-${currentRef}-`, `-git-${branchSlug}-`);
+    vercelPreviewUrl = withBranch !== host ? `https://${withBranch}` : `https://${branchSlug}.vercel.app`;
+  } else {
+    vercelPreviewUrl = `https://${branchSlug}.vercel.app`;
+  }
 
   await db
     .update(drafts)

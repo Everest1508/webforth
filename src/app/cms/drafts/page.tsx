@@ -32,12 +32,20 @@ export default async function DraftsListPage() {
                 {d.publishedBranch && ` · Branch: ${d.publishedBranch}`}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Link
                 href={`/cms?draftId=${d.id}`}
                 className="rounded border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-100"
               >
                 Edit
+              </Link>
+              <Link
+                href={`/preview/${d.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-100"
+              >
+                Draft preview
               </Link>
               {d.publishedUrl && (
                 <a
@@ -45,8 +53,9 @@ export default async function DraftsListPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-100"
+                  title="Vercel deployment (may take 1–2 min to build)"
                 >
-                  Preview
+                  Deployment
                 </a>
               )}
             </div>

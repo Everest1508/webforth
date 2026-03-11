@@ -324,8 +324,9 @@ export default function VisualEditor({
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-zinc-600 hover:underline disabled:pointer-events-none"
+            title="See draft as it looks (instant)"
           >
-            Preview
+            Draft preview
           </a>
           <Link
             href={currentDraftId ? `/cms?draftId=${currentDraftId}` : "/cms"}
@@ -345,13 +346,16 @@ export default function VisualEditor({
         <div className="bg-green-50 px-4 py-2 text-sm text-green-800">
           <p>Branch <code className="rounded bg-green-100 px-1">{publishStatus.branch}</code> created with your content.</p>
           <p className="mt-1">
-            <a href={publishStatus.url} target="_blank" rel="noopener noreferrer" className="underline">Preview deployment</a>
-            {publishStatus.prUrl && (
-              <> · <a href={publishStatus.prUrl} target="_blank" rel="noopener noreferrer" className="underline font-medium">Open Pull Request</a></>
-            )}
+            {publishStatus.prUrl ? (
+              <>
+                <a href={publishStatus.prUrl} target="_blank" rel="noopener noreferrer" className="underline font-medium">Open Pull Request</a>
+                <span className="text-green-700"> — use the PR for the deployment link once Vercel finishes building (1–2 min).</span>
+              </>
+            ) : null}
+            <a href={publishStatus.url} target="_blank" rel="noopener noreferrer" className="ml-1 underline" title="Deployment may show 404 until the build finishes">Deployment</a>
           </p>
           {publishStatus.prUrl && (
-            <p className="mt-1 text-green-700">Merge the PR in GitHub to update the main branch. Preview may take 1–2 min to build.</p>
+            <p className="mt-1 text-green-700">Merge the PR in GitHub to update the main branch.</p>
           )}
         </div>
       )}

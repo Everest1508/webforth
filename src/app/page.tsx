@@ -4,7 +4,8 @@ import { BlockRenderer } from "@/components/block-renderer";
 
 export default function HomePage() {
   const content = getContent();
-  const homePage = content.pages.find((p) => p.slug === "home") ?? content.pages[0];
+  const pages = content?.pages ?? [];
+  const homePage = pages.find((p) => p.slug === "home") ?? pages[0];
   if (!homePage) {
     return (
       <div className="flex min-h-screen items-center justify-center">
