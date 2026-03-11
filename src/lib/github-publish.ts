@@ -80,34 +80,54 @@ export async function publishToGitHub(
     }
   }
 
-  // Content files: write content/pages.json and content/global.json
+  // Content files: write content/pages.json and content/global.json (ensure serializable)
   const contentDir = "content";
-  const pagesJson = JSON.stringify({ pages: content.pages }, null, 2);
-  const globalJson = JSON.stringify(content.global, null, 2);
+  const safeGlobal = content.global ?? { siteName: "", navigation: [] };
+  const safePages = content.pages ?? [];
+  let pagesJson: string;
+  let globalJson: string;
+  try {
+    pagesJson = JSON.stringify({ pages: safePages }, null, 2);
+    globalJson = JSON.stringify(safeGlobal, null, 2);
+  } catch (e) {
+    throw new Error("Content could not be serialized to JSON. Check for invalid or circular data.");
+  }
 
   // Get tree SHA for base (we need the latest commit tree)
   const commitRes = await fetch(
     `${GITHUB_API}/repos/${owner}/${repo}/git/commits/${baseSha}`,
     { headers: getAuthHeaders() }
   );
-  if (!commitRes.ok) throw new Error("Failed to get base commit");
+  if (!commitRes.ok) {
+    const err = await commitRes.text();
+    throw new Error(`Failed to get base commit: ${commitRes.status} ${err}`);
+  }
   const { tree } = (await commitRes.json()) as { tree: { sha: string } };
   const baseTreeSha = tree.sha;
 
-  // Create blobs for our files
-  const blob = async (content: string): Promise<string> => {
+  // Create blobs for our files (GitHub accepts utf-8; surface API errors)
+  const createBlob = async (rawContent: string, label: string): Promise<string> => {
     const res = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/git/blobs`, {
       method: "POST",
       headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ content, encoding: "utf-8" }),
+      body: JSON.stringify({ content: rawContent, encoding: "utf-8" }),
     });
-    if (!res.ok) throw new Error("Failed to create blob");
-    const { sha } = (await res.json()) as { sha: string };
-    return sha;
+    const errText = await res.text();
+    if (!res.ok) {
+      throw new Error(`Failed to create blob (${label}): ${res.status} ${errText}`);
+    }
+    let data: { sha?: string };
+    try {
+      data = JSON.parse(errText) as { sha: string };
+    } catch {
+      throw new Error(`Failed to create blob (${label}): unexpected response`);
+    }
+    if (!data.sha) throw new Error(`Failed to create blob (${label}): no sha in response`);
+    return data.sha;
   };
 
-  const pagesBlob = await blob(pagesJson);
-  const globalBlob = await blob(globalJson);
+  const pagesBlob = await createBlob(pagesJson, "pages.json");
+  const globalBlob = await createBlob(globalJson, "global.json");
 
   // Create tree with new files
   const treeRes = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/git/trees`, {
