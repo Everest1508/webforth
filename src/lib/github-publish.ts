@@ -105,20 +105,26 @@ export async function publishToGitHub(
   const { tree } = (await commitRes.json()) as { tree: { sha: string } };
   const baseTreeSha = tree.sha;
 
-  // Create blobs for our files (GitHub accepts utf-8; surface API errors)
+  // Create blobs using base64 to avoid encoding/size edge cases with GitHub API
   const createBlob = async (rawContent: string, label: string): Promise<string> => {
+    const base64Content =
+      typeof Buffer !== "undefined"
+        ? Buffer.from(rawContent, "utf-8").toString("base64")
+        : btoa(unescape(encodeURIComponent(rawContent)));
+
     const res = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/git/blobs`, {
       method: "POST",
       headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ content: rawContent, encoding: "utf-8" }),
+      body: JSON.stringify({ content: base64Content, encoding: "base64" }),
     });
-    const errText = await res.text();
+    const bodyText = await res.text();
     if (!res.ok) {
-      throw new Error(`Failed to create blob (${label}): ${res.status} ${errText}`);
+      console.error(`[GitHub blob ${label}] ${res.status}`, bodyText);
+      throw new Error(`Failed to create blob (${label}): ${res.status} ${bodyText}`);
     }
     let data: { sha?: string };
     try {
-      data = JSON.parse(errText) as { sha: string };
+      data = JSON.parse(bodyText) as { sha: string };
     } catch {
       throw new Error(`Failed to create blob (${label}): unexpected response`);
     }
