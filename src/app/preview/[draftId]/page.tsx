@@ -12,7 +12,7 @@ export default async function DraftPreviewPage({ params }: Props) {
   const draft = await getDraft(draftId);
   if (!draft) notFound();
   const raw = draft.content;
-  const content = typeof raw === "object" && raw !== null ? raw : {};
+  const content = (typeof raw === "object" && raw !== null ? raw : {}) as { pages?: unknown[]; global?: unknown };
   const pages = Array.isArray(content.pages) ? content.pages : [];
   const homePage = pages.find((p) => p && p.slug === "home") ?? pages[0];
   if (!homePage) {
