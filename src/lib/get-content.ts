@@ -7,7 +7,7 @@ let cached: SiteContent | null = null;
 
 /**
  * Load site content from content/pages.json and content/global.json (for deployed branches).
- * Falls back to DEFAULT_SITE_CONTENT if files are missing (e.g. dev before first publish).
+ * Falls back to DEFAULT_SITE_CONTENT if files are missing or invalid (avoids blank site).
  */
 export function getContent(): SiteContent {
   if (cached) return cached;
@@ -18,10 +18,17 @@ export function getContent(): SiteContent {
     if (existsSync(pagesPath) && existsSync(globalPath)) {
       const pagesJson = readFileSync(pagesPath, "utf-8");
       const globalJson = readFileSync(globalPath, "utf-8");
-      const { pages } = JSON.parse(pagesJson) as { pages: SiteContent["pages"] };
+      const parsedPages = JSON.parse(pagesJson) as { pages?: SiteContent["pages"] };
+      const pages = Array.isArray(parsedPages?.pages) ? parsedPages.pages : [];
       const global = JSON.parse(globalJson) as SiteContent["global"];
-      cached = { pages, global };
-      return cached;
+      // Ensure we never return empty pages or broken global (would cause blank site)
+      const safeGlobal: SiteContent["global"] = global && typeof global === "object"
+        ? { ...global, siteName: global.siteName ?? "Site", navigation: Array.isArray(global.navigation) ? global.navigation : [] }
+        : DEFAULT_SITE_CONTENT.global;
+      if (pages.length > 0) {
+        cached = { pages, global: safeGlobal };
+        return cached;
+      }
     }
   } catch {
     // fall through to default

@@ -18,8 +18,8 @@ function getAuthHeaders(): HeadersInit {
 export async function publishToGitHub(
   draftId: string,
   content: SiteContent,
-  _draftName: string
-): Promise<{ branch: string; url: string }> {
+  draftName: string
+): Promise<{ branch: string; url: string; prUrl?: string }> {
   const owner = process.env.GITHUB_REPO_OWNER;
   const repo = process.env.GITHUB_REPO_NAME;
   if (!owner || !repo) throw new Error("GITHUB_REPO_OWNER and GITHUB_REPO_NAME must be set");
@@ -211,6 +211,39 @@ export async function publishToGitHub(
     }
   }
 
+  // Create Pull Request: preview branch -> main (so you can review and merge)
+  let prUrl: string | undefined;
+  const prRes = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/pulls`, {
+    method: "POST",
+    headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: `CMS: ${draftName || `Draft ${draftId}`}`,
+      head: branchName,
+      base: defaultBranch,
+      body: `Content changes from the website editor. Merge this to publish to **${defaultBranch}**.\n\n- Branch: \`${branchName}\`\n- Draft ID: ${draftId}`,
+    }),
+  });
+  const prBody = await prRes.text();
+  if (prRes.ok) {
+    try {
+      const prData = JSON.parse(prBody) as { html_url?: string };
+      prUrl = prData.html_url;
+    } catch {
+      // ignore
+    }
+  }
+  // If PR already exists (same head branch), try to get existing PR
+  if (!prUrl && prRes.status === 422) {
+    const listRes = await fetch(
+      `${GITHUB_API}/repos/${owner}/${repo}/pulls?head=${owner}:${branchName}&state=open`,
+      { headers: getAuthHeaders() }
+    );
+    if (listRes.ok) {
+      const list = JSON.parse(await listRes.text()) as { html_url?: string }[];
+      prUrl = list[0]?.html_url;
+    }
+  }
+
   const previewUrl =
     process.env.VERCEL_URL && process.env.VERCEL_ENV !== "production"
       ? `https://${process.env.VERCEL_PROJECT_ID}-git-${branchName.replace(/\//g, "-")}-${process.env.VERCEL_TEAM_ID?.slice(0, 6) ?? "preview"}.vercel.app`
@@ -229,5 +262,5 @@ export async function publishToGitHub(
     })
     .where(eq(drafts.id, draftId));
 
-  return { branch: branchName, url: vercelPreviewUrl };
+  return { branch: branchName, url: vercelPreviewUrl, prUrl };
 }

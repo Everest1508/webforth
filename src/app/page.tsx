@@ -12,9 +12,10 @@ export default function HomePage() {
       </div>
     );
   }
+  const blocks = Array.isArray(homePage.blocks) ? homePage.blocks : [];
   return (
-    <SiteLayout global={content.global}>
-      {homePage.blocks.map((block) => (
+    <SiteLayout global={content.global ?? { siteName: "Site", navigation: [] }}>
+      {blocks.map((block) => (
         <BlockRenderer key={block.id} block={block} />
       ))}
     </SiteLayout>

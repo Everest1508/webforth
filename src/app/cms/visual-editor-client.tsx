@@ -94,6 +94,7 @@ export default function VisualEditor({
   const [publishStatus, setPublishStatus] = useState<{
     branch?: string;
     url?: string;
+    prUrl?: string;
     error?: string;
   } | null>(null);
 
@@ -251,7 +252,7 @@ export default function VisualEditor({
       setPublishStatus(null);
       try {
         const result = await publishDraft(currentDraftId);
-        setPublishStatus({ branch: result.branch, url: result.url });
+        setPublishStatus({ branch: result.branch, url: result.url, prUrl: result.prUrl });
       } catch (e) {
         setPublishStatus({
           error: e instanceof Error ? e.message : "Publish failed",
@@ -342,15 +343,16 @@ export default function VisualEditor({
       )}
       {publishStatus?.url && (
         <div className="bg-green-50 px-4 py-2 text-sm text-green-800">
-          Published.{" "}
-          <a
-            href={publishStatus.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            Open preview
-          </a>
+          <p>Branch <code className="rounded bg-green-100 px-1">{publishStatus.branch}</code> created with your content.</p>
+          <p className="mt-1">
+            <a href={publishStatus.url} target="_blank" rel="noopener noreferrer" className="underline">Preview deployment</a>
+            {publishStatus.prUrl && (
+              <> · <a href={publishStatus.prUrl} target="_blank" rel="noopener noreferrer" className="underline font-medium">Open Pull Request</a></>
+            )}
+          </p>
+          {publishStatus.prUrl && (
+            <p className="mt-1 text-green-700">Merge the PR in GitHub to update the main branch. Preview may take 1–2 min to build.</p>
+          )}
         </div>
       )}
 
