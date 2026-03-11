@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Web Builder
 
-## Getting Started
+A WordPress-like website builder built with Next.js. Users with **editor** or **admin** permissions can edit content (headings, text, images, blocks), save drafts to the database, and **publish** each draft to a new GitHub branch. Vercel deploys each branch, giving a unique preview URL per draft.
 
-First, run the development server:
+## Features
+
+- **Permissions**: Clerk auth + role-based access (admin, editor, viewer). Only admin/editor can edit and publish.
+- **Drafts**: Edits are stored in Turso (SQLite). Save as draft without touching Git.
+- **Publish to branch**: "Publish" creates a new branch (e.g. `cms/preview-{draftId}`), writes `content/pages.json` and `content/global.json`, and pushes. Vercel deploys the branch.
+- **Site rendering**: The live site reads from `content/*.json`. Draft preview at `/preview/[draftId]`.
+- **Agent API**: `POST /api/agent/update-block` to update specific blocks in a draft by ID (for agentic AI workflows).
+
+## Setup
+
+### 1. Environment variables
+
+Copy `.env.example` to `.env.local` and fill in:
+
+- **Clerk**: [dashboard.clerk.com](https://dashboard.clerk.com) → Create application → Copy `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`.
+- **Turso**: Use your existing Turso DB URL and auth token (e.g. from `turso-token` or [turso.tech](https://turso.tech)).
+- **GitHub**: Create a Personal Access Token (or use a GitHub App) with `repo` scope. Set `GITHUB_ACCESS_TOKEN`, `GITHUB_REPO_OWNER`, and `GITHUB_REPO_NAME` for the repo you want to push content branches to. Set `GITHUB_DEFAULT_BRANCH` (default: `main`).
+
+### 2. Database
+
+Push the schema to Turso:
+
+```bash
+npm run db:push
+```
+
+Seed an admin user (use the Clerk user ID from the Clerk dashboard after signing up):
+
+```bash
+TURSO_DATABASE_URL=libsql://your-db.turso.io TURSO_AUTH_TOKEN=your-token npx tsx scripts/seed-admin.ts user_xxxx
+```
+
+### 3. Run the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Public site**: [http://localhost:3000](http://localhost:3000)
+- **Editor**: [http://localhost:3000/sign-in](http://localhost:3000/sign-in) → then [http://localhost:3000/dashboard](http://localhost:3000/dashboard) and [http://localhost:3000/cms](http://localhost:3000/cms)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Connect this repo to Vercel. Enable branch deployments (default). Each publish creates a branch; Vercel will build and deploy it. The app stores a best-effort preview URL on the draft; the exact URL is also in the Vercel dashboard.
 
-## Learn More
+## Content model
 
-To learn more about Next.js, take a look at the following resources:
+- **Pages**: slug, title, meta description, and an ordered list of **blocks** (hero, text, cta, features, testimonials, image).
+- **Global**: site name, logo URL, footer text, navigation items, optional theme.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Drafts store full site content as JSON. On publish, that JSON is written to `content/pages.json` and `content/global.json` on the new branch so the Next.js app can read it at build time.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Agent API
 
-## Deploy on Vercel
+`POST /api/agent/update-block` (requires editor/admin):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```json
+{
+  "draftId": "abc123",
+  "instructions": [
+    { "type": "setHeading", "blockId": "hero-1", "value": "New headline" },
+    { "type": "setBody", "blockId": "text-1", "value": "New body text" }
+  ]
+}
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Supported instruction types: `setHeading`, `setSubheading`, `setBody`, `setButtonLabel`, `setButtonUrl`, `setImageSrc`, `setImageAlt`. The draft is updated in the DB; the user can then click "Publish" to push to a branch.

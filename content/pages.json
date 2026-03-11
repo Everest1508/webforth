@@ -1,0 +1,25 @@
+{
+  "pages": [
+    {
+      "slug": "home",
+      "title": "Home",
+      "metaDescription": "Welcome to our site",
+      "blocks": [
+        {
+          "type": "hero",
+          "id": "hero-1",
+          "heading": "Welcome to Our Site",
+          "subheading": "Edit this content in the dashboard.",
+          "primaryButton": { "label": "Get Started", "url": "/" },
+          "layout": "center"
+        },
+        {
+          "type": "text",
+          "id": "text-1",
+          "body": "<p>This is editable content. Users with editor permissions can change headings, images, and more.</p>",
+          "alignment": "center"
+        }
+      ]
+    }
+  ]
+}

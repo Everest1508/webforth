@@ -1,0 +1,7 @@
+{
+  "siteName": "Web Builder",
+  "navigation": [
+    { "label": "Home", "url": "/" }
+  ],
+  "footerText": "Built with Next.js"
+}
